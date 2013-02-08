@@ -11,6 +11,7 @@ import unfiltered.response._
 import scala.concurrent.ExecutionContext
 import scala.util.Success
 import scala.util.Failure
+import se.aorwall.exceptions.NotFoundException
 
 object WebApp extends App {
   
@@ -30,7 +31,7 @@ object WebApp extends App {
           future onComplete {
             case Success(posts) => req.respond(JsonContent ~> anyToResponse(posts))
             case Failure(failure) => failure match {
-              case e: IllegalArgumentException => req.respond(NotFound)
+              case e: NotFoundException => req.respond(NotFound)
               case _ => req.respond(InternalServerError)
             }
           }
@@ -65,7 +66,7 @@ object WebApp extends App {
             case Success(posts) => req.respond(NoContent)
             case Failure(failure) => req.respond(BadRequest)
           }
-        } 
+        }
         case _ => MethodNotAllowed
       }
       case _ => BadRequest
