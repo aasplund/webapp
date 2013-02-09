@@ -19,7 +19,7 @@
 
         <ul data-bind="foreach: tasks, visible: tasks().length > 0">
             <li>
-                <input type="checkbox" data-bind="click: $parent.saveTask, checked: isDone" />
+                <input type="checkbox" data-bind="checked: isDone" />
                 <input data-bind="value: title, disable: isDone" />
                 <a href="#" data-bind="click: $parent.removeTask">Delete</a>
                 "<span data-bind="text: id"></span>"
@@ -60,18 +60,15 @@
                     var newTask = new Task({ timestamp: new Date().getTime(), title: this.newTaskText() });
                     self.tasks.push(newTask);
                     $.post("/tasks", ko.toJSON(newTask), function(data) {
-                      newTask.id(data); 
+                        newTask.id(data); 
+                        ko.computed(function() {
+                            $.ajax("/tasks/"+newTask.id(), {
+                                data: ko.toJSON(newTask),
+                                type: "put", contentType: "application/json"
+                            });
+                        });
                     });
                     self.newTaskText("");
-                };
-    
-                self.saveTask = function(task) {
-                    $.ajax("/tasks/"+task.id(), {
-                        data: ko.toJSON(task),
-                        type: "put", contentType: "application/json",
-                        success: function(result) { alert(task.isDone()) },
-                        failure: function(result) { alert("error: " + result) }
-                    });
                 };
     
                 self.removeTask = function(task) { 
@@ -85,6 +82,17 @@
                 $.getJSON("/tasks", function(allData) {
                     var mappedTasks = $.map(allData, function(item) { return new Task(item) });
                     self.tasks(mappedTasks);
+                    
+                    ko.utils.arrayForEach(self.tasks(), function(task){
+                        if(task.id() != null){
+                            ko.computed(function() {
+                                $.ajax("/tasks/"+task.id(), {
+                                    data: ko.toJSON(task),
+                                    type: "put", contentType: "application/json"
+                                });
+                            });
+                         }
+                    });
                 });
             }
 
