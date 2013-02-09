@@ -62,10 +62,7 @@
                     $.post("/tasks", ko.toJSON(newTask), function(data) {
                         newTask.id(data); 
                         ko.computed(function() {
-                            $.ajax("/tasks/"+newTask.id(), {
-                                data: ko.toJSON(newTask),
-                                type: "put", contentType: "application/json"
-                            });
+                            self.updateTask(task);
                         });
                     });
                     self.newTaskText("");
@@ -77,21 +74,25 @@
                     });
                     self.tasks.destroy(task);
                 };
+                
+                self.updateTask = function(task) {
+                    if(task.id() != null) {
+                        $.ajax("/tasks/"+task.id(), {
+                            data: ko.toJSON(task),
+                            type: "put", contentType: "application/json"
+                        });
+                    }
+                }
     
-                // load tasks
+                // load tasks on startup
                 $.getJSON("/tasks", function(allData) {
                     var mappedTasks = $.map(allData, function(item) { return new Task(item) });
                     self.tasks(mappedTasks);
                     
                     ko.utils.arrayForEach(self.tasks(), function(task){
-                        if(task.id() != null){
-                            ko.computed(function() {
-                                $.ajax("/tasks/"+task.id(), {
-                                    data: ko.toJSON(task),
-                                    type: "put", contentType: "application/json"
-                                });
-                            });
-                         }
+                        ko.computed(function() {
+                            self.updateTask(task);
+                        });
                     });
                 });
             }
