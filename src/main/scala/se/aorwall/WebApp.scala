@@ -33,7 +33,7 @@ object WebApp extends App {
           future onComplete {
             case Success(posts) => req.respond(JsonContent ~> anyToResponse(posts))
             case Failure(failure) => failure match {
-              case NotFoundException(msg) => req.respond(NotFound ~> anyToResponse(msg))
+              case NotFoundException(msg) => req.respond(NotFound ~> JsonContent ~> anyToResponse(msg))
               case _ => req.respond(InternalServerError)
             }
           }
@@ -53,7 +53,7 @@ object WebApp extends App {
           future onComplete {
             case Success(post) => req.respond(JsonContent ~> anyToResponse(post))
             case Failure(failure) => failure match {
-              case NotFoundException(msg) => req.respond(NotFound ~> anyToResponse(msg))
+              case NotFoundException(msg) => req.respond(NotFound ~> JsonContent ~> anyToResponse(msg))
               case _ => req.respond(InternalServerError)
             }
           }
@@ -63,7 +63,7 @@ object WebApp extends App {
           future onComplete {
             case Success(posts) => req.respond(NoContent)
             case Failure(failure) => failure match {
-              case NotFoundException(msg) => req.respond(NotFound ~> anyToResponse(msg))
+              case NotFoundException(msg) => req.respond(NotFound ~> JsonContent ~> anyToResponse(msg))
               case _ => req.respond(InternalServerError)
             }
           }
@@ -73,7 +73,7 @@ object WebApp extends App {
           future onComplete {
             case Success(posts) => req.respond(NoContent)
             case Failure(failure) => failure match {
-              case NotFoundException(msg) => req.respond(NotFound ~> anyToResponse(msg))
+              case NotFoundException(msg) => req.respond(NotFound ~> JsonContent ~> anyToResponse(msg))
               case _ => req.respond(InternalServerError)
             }
           }
