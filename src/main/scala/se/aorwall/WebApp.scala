@@ -22,16 +22,18 @@ object WebApp extends App {
   
   val storage = CassandraStorage
   
+  lazy val indexFile = io.Source.fromInputStream(getClass.getResourceAsStream("/index.html")).mkString
+  
   lazy val nettyServer = unfiltered.netty.Http(8080)
     .handler(unfiltered.netty.async.Planify({
-      case Path(Seg(Nil)) => ResponseString("base")
+      case req @ Path(Seg(Nil)) => req.respond(ResponseString(indexFile))
       case req @ Path(Seg("tasks" :: Nil )) => req match {
         case GET(_) => {
           val future = storage.readAll()
           future onComplete {
             case Success(posts) => req.respond(JsonContent ~> anyToResponse(posts))
             case Failure(failure) => failure match {
-              case e: NotFoundException => req.respond(NotFound)
+              case NotFoundException(msg) => req.respond(NotFound ~> anyToResponse(msg))
               case _ => req.respond(InternalServerError)
             }
           }
@@ -39,7 +41,7 @@ object WebApp extends App {
         case POST(_) => {
           val future = storage.create(requestToPost(req))
           future onComplete {
-            case Success(id) => req.respond(JsonContent ~> ResponseString(id))
+            case Success(id) => req.respond(JsonContent ~> anyToResponse(id))
             case Failure(failure) => req.respond(BadRequest)
           }
         }
@@ -50,21 +52,30 @@ object WebApp extends App {
           val future = storage.read(id)
           future onComplete {
             case Success(post) => req.respond(JsonContent ~> anyToResponse(post))
-            case Failure(failure) => req.respond(NotFound)
+            case Failure(failure) => failure match {
+              case NotFoundException(msg) => req.respond(NotFound ~> anyToResponse(msg))
+              case _ => req.respond(InternalServerError)
+            }
           }
         }
         case PUT(_) => {
           val future = storage.update(requestToPost(req))
           future onComplete {
             case Success(posts) => req.respond(NoContent)
-            case Failure(failure) => req.respond(BadRequest)
+            case Failure(failure) => failure match {
+              case NotFoundException(msg) => req.respond(NotFound ~> anyToResponse(msg))
+              case _ => req.respond(InternalServerError)
+            }
           }
-        } 
+        }
         case DELETE(_) => {
           val future = storage.delete(id)
           future onComplete {
             case Success(posts) => req.respond(NoContent)
-            case Failure(failure) => req.respond(BadRequest)
+            case Failure(failure) => failure match {
+              case NotFoundException(msg) => req.respond(NotFound ~> anyToResponse(msg))
+              case _ => req.respond(InternalServerError)
+            }
           }
         }
         case _ => MethodNotAllowed

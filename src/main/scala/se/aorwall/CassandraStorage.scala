@@ -37,29 +37,33 @@ object CassandraStorage extends Storage[String, Task] {
   val tasks = new ThriftColumnFamilyTemplate[UUID, String](keyspace, "Tasks", UUIDSerializer.get(), StringSerializer.get())
   val timeline = new ThriftColumnFamilyTemplate[String, UUID](keyspace, "Timeline", StringSerializer.get(), UUIDSerializer.get())
   
-  def create(task: Task): Future[String] = {  
-    val id = TimeUUIDUtils.getTimeUUID(task.timestamp)
+  def updateTask(id: UUID, task: Task){
     val updater = tasks.createUpdater(id)
     updater.setLong("timestamp", task.timestamp)
     updater.setString("title", task.title)
     updater.setBoolean("isDone", task.isDone)
     tasks.update(updater)
+  }
+  
+  def create(task: Task): Future[String] = {
+    val id = UUID.randomUUID()
+    updateTask(id, task)
     
     val tlUp = timeline.createUpdater("tasks")
-    tlUp.setBoolean(id, true)
+    val timeUuid = TimeUUIDUtils.getTimeUUID(task.timestamp)
+    tlUp.setUUID(timeUuid, id)
     timeline.update(tlUp)
     
     Future.successful(id.toString)
   }
 
   protected def read(uuid: UUID): Option[Task] = {
-    
     val res = tasks.queryColumns(uuid)
     if (res.hasResults()){
       val timestamp = res.getLong("timestamp")
       val title = res.getString("title")
       val isDone = res.getBoolean("isDone")
-      Some(Task(timestamp, title, isDone))  
+      Some(Task(uuid.toString, timestamp, title, isDone))  
     } else {
       None
     }
@@ -75,15 +79,15 @@ object CassandraStorage extends Storage[String, Task] {
 
   def readAll(): Future[List[Task]] = { 
     val cols = timeline.queryColumns("tasks")
-    val taskList = cols.getColumnNames().map { id => read(id) }.flatten.toList
+    val taskList = cols.getColumnNames().map { id => read(cols.getUUID(id)) }.flatten.toList
     Future.successful(taskList)
   }
 
   def update(task: Task): Future[Unit] = { 
-    val id = TimeUUIDUtils.getTimeUUID(task.timestamp)
+    val id = UUID.fromString(task.id)
     val res = tasks.queryColumns(id)
-    if(res != null){
-      create(task)
+    if(res.hasResults()){
+      updateTask(id, task)
       Future.successful()
     } else {
       Future.failed(new NotFoundException("No task found with id: " + id))
@@ -92,9 +96,14 @@ object CassandraStorage extends Storage[String, Task] {
 
   def delete(id: String): Future[Unit] = { 
     val uuid = UUID.fromString(id)
-    tasks.deleteRow(uuid)
-    timeline.deleteColumn("tasks", uuid)
-    Future.successful()
+    read(uuid) match {
+      case Some(Task(id, timestamp, _, _)) => {
+        tasks.deleteRow(uuid)
+        val timeUuid = TimeUUIDUtils.getTimeUUID(timestamp)
+        timeline.deleteColumn("tasks", timeUuid)
+        Future.successful()
+      }
+      case None => Future.failed(new NotFoundException("No task found with id: " + id))
+    }
   }
-  
 }

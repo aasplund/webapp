@@ -1,0 +1,95 @@
+<!--
+    Slightly modified version of the "Loading and saving data" tutorial on knockoutjs.com:
+    http://learn.knockoutjs.com/#/?tutorial=loadingsaving
+-->
+
+<html>
+    <head>
+        <title>Task list</title>
+        <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+        <script type="text/javascript" src="http://ajax.aspnetcdn.com/ajax/knockout/knockout-2.2.1.js"></script>
+    </head>
+    <body class="codeRunner">
+        <h3>Tasks</h3>
+
+        <form data-bind="submit: addTask">
+            Add task: <input data-bind="value: newTaskText" placeholder="What needs to be done?" />
+            <button type="submit">Add</button>
+        </form>
+
+        <ul data-bind="foreach: tasks, visible: tasks().length > 0">
+            <li>
+                <input type="checkbox" data-bind="click: $parent.saveTask, checked: isDone" />
+                <input data-bind="value: title, disable: isDone" />
+                <a href="#" data-bind="click: $parent.removeTask">Delete</a>
+                "<span data-bind="text: id"></span>"
+            </li>
+        </ul>
+
+        You have <b data-bind="text: incompleteTasks().length">&nbsp;</b> incomplete task(s)
+        <span data-bind="visible: incompleteTasks().length == 0"> - it's beer time!</span>
+
+        <script type='text/javascript'>
+    
+        (function () { // Wrap in function to prevent accidental globals
+            if (location.protocol != "data:") {
+                $(window).bind('hashchange', function () {
+                    window.parent.handleChildIframeUrlChange(location.hash) 
+                });
+            }
+    
+            function Task(data) {
+                this.id = ko.observable(data.id);
+                this.timestamp = data.timestamp;
+                this.title = ko.observable(data.title);
+                this.isDone = ko.observable(data.isDone);
+            }
+    
+            function TaskListViewModel() {
+                // Data
+                var self = this;
+                self.tasks = ko.observableArray([]);
+                self.newTaskText = ko.observable();
+                
+                self.incompleteTasks = ko.computed(function() {
+                   return ko.utils.arrayFilter(self.tasks(), function(task) { return !task.isDone() && !task._destroy });
+                });
+    
+                // Operations
+                self.addTask = function() {
+                    var newTask = new Task({ timestamp: new Date().getTime(), title: this.newTaskText() });
+                    self.tasks.push(newTask);
+                    $.post("/tasks", ko.toJSON(newTask), function(data) {
+                      newTask.id(data); 
+                    });
+                    self.newTaskText("");
+                };
+    
+                self.saveTask = function(task) {
+                    $.ajax("/tasks/"+task.id(), {
+                        data: ko.toJSON(task),
+                        type: "put", contentType: "application/json",
+                        success: function(result) { alert(task.isDone()) },
+                        failure: function(result) { alert("error: " + result) }
+                    });
+                };
+    
+                self.removeTask = function(task) { 
+                    $.ajax("/tasks/"+task.id(), {
+                        type: "delete", contentType: "application/json"
+                    });
+                    self.tasks.destroy(task);
+                };
+    
+                // load tasks
+                $.getJSON("/tasks", function(allData) {
+                    var mappedTasks = $.map(allData, function(item) { return new Task(item) });
+                    self.tasks(mappedTasks);
+                });
+            }
+
+            ko.applyBindings(new TaskListViewModel());
+        })();
+        </script>
+    </body>
+</html>
