@@ -4,6 +4,7 @@ import com.typesafe.sbt.SbtStartScript
 import com.typesafe.sbtscalariform.ScalariformPlugin
 import com.typesafe.sbtscalariform.ScalariformPlugin.ScalariformKeys
 import com.typesafe.sbteclipse.plugin.EclipsePlugin.EclipseKeys
+import com.typesafe.sbteclipse.plugin.EclipsePlugin.EclipseCreateSrc
 
 object WebAppBuild extends Build {
   val Organization = "webapp-example"
@@ -30,7 +31,8 @@ object WebAppBuild extends Build {
     // disable parallel tests
     parallelExecution in Test := false,
 
-    EclipseKeys.withSource := true
+    EclipseKeys.withSource := true,
+    EclipseKeys.createSrc := EclipseCreateSrc.Default + EclipseCreateSrc.Resource
   )
 
 }
