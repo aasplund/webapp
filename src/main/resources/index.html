@@ -39,10 +39,22 @@
             }
     
             function Task(data) {
-                this.id = ko.observable(data.id);
-                this.timestamp = data.timestamp;
-                this.title = ko.observable(data.title);
-                this.isDone = ko.observable(data.isDone);
+                var self = this
+                self.id = ko.observable(data.id);
+                self.timestamp = data.timestamp;
+                self.title = ko.observable(data.title);
+                self.isDone = ko.observable(data.isDone);
+                
+                var update = function() {
+                    if(self.id() != null) {
+                        $.ajax("/tasks/"+self.id(), {
+                            data: ko.toJSON(self),
+                            type: "put", contentType: "application/json"
+                        });
+                    }
+                }
+                self.isDone.subscribe(update);
+                self.title.subscribe(update);
             }
     
             function TaskListViewModel() {
@@ -61,9 +73,6 @@
                     self.tasks.push(newTask);
                     $.post("/tasks", ko.toJSON(newTask), function(data) {
                         newTask.id(data); 
-                        ko.computed(function() {
-                            self.updateTask(task);
-                        });
                     });
                     self.newTaskText("");
                 };
@@ -88,12 +97,6 @@
                 $.getJSON("/tasks", function(allData) {
                     var mappedTasks = $.map(allData, function(item) { return new Task(item) });
                     self.tasks(mappedTasks);
-                    
-                    ko.utils.arrayForEach(self.tasks(), function(task){
-                        ko.computed(function() {
-                            self.updateTask(task);
-                        });
-                    });
                 });
             }
 
