@@ -42,7 +42,7 @@ object WebApp extends App {
           val future = storage.create(requestToPost(req))
           future onComplete {
             case Success(id) => req.respond(JsonContent ~> anyToResponse(id))
-            case Failure(failure) => req.respond(BadRequest)
+            case Failure(failure) => req.respond(InternalServerError)
           }
         }
         case _ => MethodNotAllowed 
@@ -80,7 +80,7 @@ object WebApp extends App {
         }
         case _ => MethodNotAllowed
       }
-      case _ => BadRequest
+      case _ => NotFound
     }))
     
   nettyServer.run()
